@@ -340,8 +340,161 @@ int SimpleFS_seek(FileHandle* f, int pos){
 }
 
 //cerca una dir in d; se è ".." sale di livello (0=successo)
-int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
+int SimpleFS_changeDir(DirectoryHandle* d, char* dirname){
+	//controllo su input
+	if(d == NULL || dirname == NULL) return -1;
+	
+	//caso ".."
+	if(strcmp(dirname, "..") == 0){
+		//se siamo nella radice errore
+		if(strcmp(d->dcb->fcb->name, "/") == 0) return -1;
+		else{
+			//leggo le info sulla cartella genitore
+			FirstDirectoryBlock* parent = malloc(sizeof(FirstDirectoryBlock));
+			DiskDriver_readBlock(f->sfs->disk, parent, d->directory->fcb->block_in_disk);
+			d->dcb = d->directory;
+			d->current_block = &(d->dcb->header);
+			d->pos_in_block = d->dcb->fcb->block_in_disk;
+			d->pos_in_dir = 0;
+			d->directory = parent;
+			return 0;
+		}
+	}
+	//caso diverso da ".."
+	else{
+		//controllo se esiste la dir e mi ci sposto se esiste
+		int block = DirectoryExist(d, dirname);
+		if(block != -1){
+			FirstDirectoryBlock* child = malloc(sizeof(FirstDirectoryBlock));
+			DiskDriver_readBlock(d->sfs->disk, child, block);
+			//modifica directory handle
+			d->directory = d->dcb;
+			d->current_block = &(d->dcb->header);
+			d->pos_in_block = block;
+			d->pos_in_dir = 0;
+			d->dcb = child
+			return 0;			
+		}
+		else return -1;
+	}
+}
 
-int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
+//funzione ausiliaria che controlla se la dir esiste
+int DirectoryExist(DirectoryHandle* d, char* dname){
+	//controllo parametri
+	if(d == NULL || dname == NULL) return -1;
+	
+	int i, j = 0;
+	FirstDirectoryBlock* dir = malloc(sizeof(FirstDirectoryBlock));
+	DiskDriver_readBlock(d->sfs->disk, dir, d->dcb->fcb->block_in_disk);
+	
+	for(i = 0; i<d->dcb->num_entries; i++, j++){
+		//controllo indice non sia maggiore della dim del blocco
+		if(j >= sizeof(dir->file_blocks){
+			DirectoryBlock* dir;
+			j = j- sizeof(dir->file_blocks);
+			DiskDriver_readBlock(d->sfs->disk, dir, dir->header->next_block);
+		}
+		//leggo primo blocco dell'elem attuale
+		FirstDirectoryBlock* fblock = malloc(sizeof(FirstDirectoryBlock));
+		DiskDriver_readBlock(d->sfs->disk, fblock, dir->file_blocks[j]);
+		
+		//controllo directory
+		if(strcmp(fblock->fcb->name, dname) == 0 && fblock->fcb->is_dir == 1){
+			return fblock->fcb->block_in_disk;
+		}
+	}
+	return -1;
+}
+
+
+int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
+	//controllo input
+	if(d == NULL || dirname == NULL) return -1;
+	if(d->sfs->disk->header->free_blocks < 1) return -1;
+	if(DirectoryExist(d, dirname) != -1) return -1;
+	
+	//creo il primo blocco della cartella
+	FirstDirectoryBlock* fdblock = malloc(sizeof(FirstDirectoryBlock));
+	BlockHeader h;
+	h->previous_block = -1;
+	h->next_block = -1;
+	h->block_in_file = 0;
+	fdblock->header = h;
+	fdblock->fcb->block_in_disk = DiskDriver_getFreeBlock(d->sfs->disk, 0);
+	fdblock->fcb->directory_block = d->fcb->block_in_disk;
+	fdblock->fcb->is_dir = 1;
+	strcpy(fdblock->fcb->name, dirname);
+	fdblock->fcb->size_in_blocks = 0;
+	fdblock->fcb->size_in_bytes = 0;
+	fdblock->num_entries = 0;
+	memset(fdblock->file_blocks, 0, sizeof(fdblock->file_blocks));
+	DiskDriver_writeBlock(d->sfs->disk, fdblock, fdblock->fcb->block_in_disk);
+	int i;
+	//se è presente abbastanza spazio nel blocco attuale
+	if(space_in_dir(d->dcb->file_blocks, sizeof(s->dcb->file_blocks))){
+		//calcolo primo spazio libero nel FB della cartella
+		int first;
+		for(i = 0; i < sizeof(d->dcb->file_blocks); i++){
+			if(d->dcb->file_blocks[i] < 1){
+				first = i;
+				break;
+			}
+		}
+		//memorizzo il blocco dove è salvato la cartella
+		d->dcb->file_blocks[first] = fdblock->fcb->block_in_disk;
+		d->dcb->num_entries++;
+		DiskDriver_writeBlock(d->sfs->disk, d->dcb, d->dcb->block_in_disk);
+	}
+	else{
+		//se non è presente lo spazio necessario
+		int block = d->dcb->fcb->block_in_disk;
+		DirectoryBlock* dir;
+		int new_block;
+		
+		//se è presente un blocco successivo memorizzo in dir l'ultimo
+		if(d->dcb->header->next_block != -1){
+			block = d->dcb->header->next_block;
+			dir = malloc(sizeof(DirectoryBlock));
+			DiskDriver_readBlock(d->sfs->disk, dir->d->dcb->header->next_block);
+			while(dir->header->next_block != -1){
+				block = dir->header->next_block;
+				DiskDriver_readBlock(d->sfs->disk, dir, block);
+			}
+		}
+		//adesso in dir abbiamo l'ultimo blocco della cartella
+		//controllo se è presente abbastanza spazio
+		if(!space_in_dir(dir->file_blocks, sizeof(d->dcb->file_blocks)){
+			//se negativo creo nuovo blocco per le info
+			new_block = DiskDriver_getFreeBlock(d->sfs->disk, 0);
+			DirectoryBlock* dblock = malloc(sizeof(DirectoryBlock));
+			dblock->header->next_block = -1;
+			dblock->header->previous_block = block;
+			dblock->header->block_in_file = dir->header->block_in_file + 1;
+			
+			//aggiorno next block e puntatori
+			dir->header->next_block = new_block;
+			DiskDriver_writeBlock(d->sfs->disk, dir, block);
+			dir = dblock;
+			block = new_block;
+		}
+		//trovo il primo spazio libero nei fileblock della cartella
+		int first;
+		for(i = 0; i < sizeof(dir->file_blocks); i++){
+			if(dir->file_blocks[i] < 1){
+				first = i;
+				break;
+			}
+		}
+		//scrivo l'indicedel blocco dove è memorizzata 
+		//la nuova nella cartella genitore
+		dir->file_blocks[first] = fdblock->fcb->block_in_disk;
+		d->dcb->num_entries++;
+		//scrivo su blocco libero la nuova directory
+		DiskDriver_writeBlock(d->sfs->disk, dir, block);
+	}
+	DiskDriver_flush(d->sfs->disk);
+	return 0;
+}
 
 int SimpleFS_remove(SimpleFS* fs, char* filename);
