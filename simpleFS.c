@@ -312,8 +312,34 @@ int SimpleFS_read(FileHandle* f, void* data, int size){
 }
 
 //ritorna il numero di bytes letti e ritrorna pos
-int SimpleFS_seek(FileHandle* f, int pos);
+int SimpleFS_seek(FileHandle* f, int pos){
+	//controllo parametri
+	if(f = NULL || pos < 0) return -1;
+	//controllo numero caratteri del file
+	int dim = 0;
+	FirstFileBlock* block = malloc(sizeof(FirstFileBlock));
+	DiskDriver_readBlock(f->sfs->disk, block, f->fcb->fcb->block_in_disk);
+	dim += sizeof(block->data);
+	if(block->header->next_block != -1){
+		FileBlock* file = malloc(sizeof(FileBlock));
+		DiskDriver_readBlock(f->sfs->disk, file, file->header->next_block);
+		dim += sizeof(file->data);
+		while(file->header->next_block != -1){
+			DiskDriver_readBlock(f->sfs->disk, file, file->header->next_block);
+			dim+= sizeof(file->data);
+		}
+	}
+	//restituisco errore se la posizione del cursore è 
+	//maggiore di quella del file
+	if(pos > dim) return -1;
+	//altrimenti aggiorno la posizione del cursore
+	else{
+		f->pos_in_file = pos;
+		return pos;
+	}
+}
 
+//cerca una dir in d; se è ".." sale di livello (0=successo)
 int SimpleFS_changeDir(DirectoryHandle* d, char* dirname);
 
 int SimpleFS_mkDir(DirectoryHandle* d, char* dirname);
