@@ -275,9 +275,155 @@ int SimpleFS_close(FileHandle* f){
 	free(f);
 	return 0;
 }
+//scrivi sukl file
+int SimpleFS_write(FileHandle* f, void* data, int size){
+	//controllo input
+	if(f == NULL || data == NULL || size<0 ) return -1;
+	
+	//inizializzo variabili e aggiorno cursore
+	int wbyte = 0, wblock = 0;
+	int p = f->pos_in_file;
+	f->pos_in_file = (int) (f->pos_in_file + strlen(data));
+	
+	//se il cursore adesso si trova ancora nel blocco
+	if(size + p = sizeof(f->fcb->data)){
+		//copio la stringa nel blocco da "p"
+		memcpy(f->fcb->data + p, data, strlen(data));
+		DiskDriver_writeBlock(f->sfs->disk, f->fcb, f->fcb->fcb->block_in_disk);
+		wbyte = strlen(data);
+		wblock++;
+	}
+	else{
+		//inizializo variabili per i byte da scrivere
+		int dim = 0, block;
+		//copio la stringa da scrivere per poterla modificare 
+		char* copia = malloc(strlen(data));
+		strcpy(copia, data);
+		
+		//mi tengo gli indici dei blocchi precedenti,
+		//successivi e l'indice precedente
+		int pblock = f->fcb->fcb->block_in_disk;
+		int nblock = f->fcb->header->next_block;
+		int pindex = f->fcb->header->block_in_file;
+		FileBlock* file = malloc(sizeof(FileBlock));
+		
+		//controllo la posizione dove scrivere
+		//se non rientra nel blocco
+		if(p > sizeof(f->fcb->data)){
+			p = p - sizeof(f->fcb->data);
+			if(nblock != -1){
+				//vado avanti e decremento finchè esiste un 
+				//blocco successivo e la posizione è maggiore
+				while(nblock != -1 && p > sizeof(file->data)){
+					p -= sizeof(file->data);
+					pindex++;
+					pblock = nblock;
+					nblock = file->header->next_block;
+				}
+			}
+			//se non sono presenti blocchi successivi
+			else{
+				//finche la posizione è maggiore del blocco
+				while(p > sizeof(file->data)){
+					nblock = DiskDriver_getFreeBlock(f->sfs->disk, 0);
+					file->header->next_block = -1;
+					file->header->previous_block = pblock;
+					file->header->block_in_file = pindex;
+					
+					//decremento posizione
+					p -= sizeof(file->data);
+					pindex ++:
+					
+					//aggiorno blocco attuale e precedente
+					pblock = nblock;
+					DiskDriver_writeBlock(f->sfs->disk, file, nblock);
+					nblock = -1;
+				}
+			}
+		}
+		//se la posizione è nel blocco setto i dati da scrivere
+		else{
+			dim = sizeof(f->fcb->data)- p;
+			//copio nel blocco attuale i primi caratteri "dim"
+			memcpy(f->fcb->data, copia, dim);
+			DiskDriver_writeBlock(f->sfs->disk, f->fcb, f->fcb->fcb->block_in_disk);
+			//aumento copia per farlo puntare al prossimo carattere
+			copia += dim;
+			wbyte += dim;
+			wblock++;
+		}
+		//se la posizione del puntatore è > dello spazio
+		if(strlen(copia) + pos){
+			dim = sizeof(file->data) - p : strlen(copia);
+		}
+		
+		//finche non ci sono più caratteri da scrivere
+		while(dim != 0){
+			//se esiste un blocco successivo
+			if(nblock != -1){
+				//leggo il successivo e lo inizializzo con 
+				//caratteri nulli e scrivo dim caratgteri da p
+				block = nblock;
+				DiskDriver_readBlock(f->sfs->disk, file, nblock);
+				nblock = file->header->next_block;
+				memset(file->data + p, '\0', sizeof(file->data) - p);
+				memcpy(f->data + p, copia, dim);
+				
+				//aggiorno copia
+				copia += dim
+				wbyte += dim;
+				DiskDriver_writeBlock(f->sfs->disk, file, block);
+				//aggiorno blocco precedente con attuale
+				nblock = block;
+			}
+			else{
+				//trovo un blocco dove memorizzare i dati
+				block = DiskDriver_getFreeBlock(f->sfs->disk, 0);
+				//se precedente èera FirsFileBlock aggiorno successivo 
+				if(pindex == 0){
+					f->fcb->header->next_block = block;
+					DiskDriver_writeBlock(f->sfs->disk, f->fcb, f->fcb->fcb->block_in_disk);
+				}
+				else{
+					//leggo blocco precedente e aggiorno l'indice del successivo
+					FileBlock* fblock = malloc(sizeof(FileBlock));
+					DiskDriver_readBlock(f->sfs->disk, fblock, pblock);
+					fblock->header->next_block = block;
+					DiskDriver_writeBlock(f->sfs->disk, fblock, pblock);
+				}
+				//memorizzo info del blocco attuale
+				file->header->previous_block = pblock;
+				nblock = -1;
+				file->header->next_block = nblock;
+				pblock += 1;
+				file->header->block_in_file = pblock;
+				//inizializzo con char nulli il blocco attuale
+				//scrivo dim caratteri
+				memset(file->data, '\0', sizeof(file->data));
+				memcpy(file->data, copia, dim);
+				//aggiorno copia
+				copia += dim;
+				wbyte += dim;
+				DiskDriver_writeBlock(f->sfs->disk, file, block);
+				pblock = block;
+			}
+			//se la dim finale del puntatore > dello spazio
+			if(strlen(copia) + p >sizeof(file->data){
+				dim = sizeof(dile->data) - p : strlen(copia);
+			}
+			wblock++;
+		}
+	}
+	//aggiorno byte e blocchi file
+	if(p + strlen(data) > f->fcb->size_in_bytes){
+		f->fcb->fcb->size_in_bytes = p + strlen(data) : f->fcb->fcb->size_in_bytes;
+	}
+	f->fcb->fcb->size_in_blocks = wblock;
+	DiskDriver_writeBlock(f->sfs->disk, f->fcb, f->fcb->fcb->block_in_disk);
+	return wbyte;
+}
 
-///int SimpleFS_write(FileHandle* f, void* data, int size);
-
+//legge nel file nella posizione size i bytes in data
 int SimpleFS_read(FileHandle* f, void* data, int size){
 	//controllo parametri
 	if(f = NULL || data = NULL || size < 0) return -1;
@@ -407,7 +553,7 @@ int DirectoryExist(DirectoryHandle* d, char* dname){
 	return -1;
 }
 
-
+//creo cartella dirname il directory d
 int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 	//controllo input
 	if(d == NULL || dirname == NULL) return -1;
@@ -497,4 +643,5 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 	return 0;
 }
 
+//rimuovo il file nella directory
 int SimpleFS_remove(SimpleFS* fs, char* filename);
