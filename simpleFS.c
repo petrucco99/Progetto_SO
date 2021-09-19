@@ -643,5 +643,186 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 	return 0;
 }
 
-//rimuovo il file nella directory
-int SimpleFS_remove(SimpleFS* fs, char* filename);
+//rimuovo il file
+int SimpleFS_remove(SimpleFS* fs, char* filename){
+	if(fs = NULL || filename == NULL) return -1;
+	DirectoryHandle* dir = malloc(sizeof(DirectoryHandle));
+	dir->sfs = fs;
+	int block, nblock, i,j;
+	//se la cartella ha un blocco successivo
+	if(dir->dcb->header->next_block != -1){
+		int next_db = dir->dcb->header->next_block;
+		DirectoryBlock* dblock = malloc(sizeof(DirectoryBlock));
+		while(next_db != -1){
+			//leggo blocco successivo
+			DiskDriver_readBlock(fs->disk, dblock, next_db);
+			for(i = 0; i < sizeof(dblock->file_blocks); i++){
+				//se è presente un elemento nullo 
+				if(dblock->file_blocks[i] > 0){
+					//memorizzo le info del primo blocco del file
+					//contenuto nell'elemento corrente
+					FirstFileBlock* file = malloc(sizeof(FirstFileBlock));
+					DiskDriver_readBlock(fs->disk, file, dblock->file_blocks[i]);
+					block = file->fcb->block_in_disk;
+					//se il nome corrisponde
+					if(strcmp(file->fcb->name, filename) == 0){
+						//cancello tutti i blocchi se è un file
+						if(file->fcb->is_dir == 0){
+							if(file->header->next_block != -1){
+								nblock = file->header->next_block;
+								while(nblock != -1){
+									DiskDriver_freeBlock(fs->disk, block);
+									dblock->file_blocks[i] = 0;
+									if(nblock != -1) DiskDriver_readBlock(fs->disk, file, nblock);
+									block = nblock;
+									nblock = file->header->next_block;
+								}
+								return 0;
+							}
+							else{
+								DiskDriver_freeBlock(fs->disk, block);
+							}
+						}
+						else{
+							//leggo il primo blocco della cartella e 
+							//creo un dir handle per la cartella
+							FirstDirectoryBlock* fdb = malloc(sizeof(FirstDirectoryBlock));
+							DirectoryHandle* dh = malloc(sizeof(DirectoryHandle));
+							dh->sfs = fs;
+							dh->dcb = fdb;
+							dh->directory = dir->dcb;
+							dh->current_block = &fdb->header;
+							dh->pos_in_dir = 0;
+							dh->pos_in_block = 0;
+							
+							//se ha più di un blocco
+							if(fdb->header->next_block != -1){
+								for(j = 0; j < sizeof(fdb->file_blocks); j++){
+									//se il ogni elemento del primo blocco 
+									//contirne qualcosa richiamo ricorsivamente
+									if(dblock->file_blocks[j] > 0){
+										FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+										DiskDriver_readBlock(fs->disk, delete, fdb->file_blocks[j]);
+										SimpleFS_remove(fs, delete->fcb->name);
+										dblock->file_blocks[j] = 0;
+									}
+								}
+								//leggo il blocco successivo
+								DirectoryBlock* dblock2 = malloc(sizeof(DirectoryBlock));
+								int next_db2 = fdb->header->next_block;
+								//se ci sono blocchi successivi
+								while(next->db2 != -1){
+									DiskDriver_readBlock(fs->disk, dblock2, next_db2);
+									//richiamo ricorsivamente per ogni elemento non vuoto
+									for(j = 0; j < sizeof(dblock2->file_blocks); j++) {
+										if(dblock->file_blocks[i] > 0){
+											FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+											DiskDriver_readBlock(fs->disk, delete, fdb->file_blocks[j]);
+											SimpleFS_remove(fs, delete->fcb->name);
+											dblock->file_blocks[i] = 0;
+										}
+									}
+								}
+							}
+							else{
+								//se non ci sono blocchi successivi elimino
+								//tutti gli elementi del primo blocco
+								for(j = 0; j < sizeof(fdb->file_blocks); j++){
+									if(fdb->file_blocks[i] > 0){
+										FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+										DiskDriver_readBlock(fs->disk, delete, fdb->file_blocks[j]);
+										SimpleFS_remove(fs, delete->fcb->name);
+										dblock->file_blocks[i] = 0;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			next_db = dblock->header->next_block;
+		}
+	}
+	else{
+		//se la cartella ha un solo blocco
+		int rimasti
+		for(i = 0, rimasti = dir->dcb->num_entries; i < sizeof(dir->dcb->file_blocks); i++){
+			if(dir->dcb->file_blocks[i] > 0 && rimasti){
+				rimasti--;
+				//memorizzo info del file
+				FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+				DiskDriver_readBlock(fs->disk, delete, dir->dcb->file_blocks[i]);
+				block = dir->dcb->file_blocks[i];
+				//se è il file corretto
+				if(strcmp(delete->fcb->name, filename) == 0){
+					//se non è una cartella
+					if(delete->fcb->is_dir == 0){
+						//se è presente più di un blocco
+						if(delete->header->next_block != -1){
+							nblock = delete->header->next_block;
+							while(nblock != -1){
+								DiskDriver_freeBlock(fs->disk, block);
+								dir->dcb->file_blocks[i] = 0;
+								//controllo se esista blocco successivo e lo leggo
+								if(nblock != -1) DiskDriver_readBlock(fs->disk, delete, nblock);
+								block = nblock;
+								nblock = delete->header->next_block;
+							}
+						}
+						else{
+							DiskDriver_freeBlock(fs->disk, block);
+						}
+						dir->dcb->file_blocks[i] = 0;
+						return 0;
+					}
+					else{
+						//se è cartella memorizzo info del primo blocco
+						FirstDirectoryBlock* fdb = malloc(sizeof(FirstDirectoryBlock));
+						DiskDriver_readBlock(fs->disk, fdb, dir->dcb->file_blocks[i]);
+						//se la cartella ha più blocchi
+						if(fdb->header->next_block != -1){
+							for(j = 0; j < sizeof(fdb->file_blocks); j++){
+								if(dir->dcb->file_blocks[j] > 0) {
+									FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+									DiskDriver_readBlock(fs->disk, delete, fdb->file_blocks[j]);
+									SimpleFS_remove(fs, delete->fcb->name);
+									fdb->file_blocks[i] = 0;
+								}
+							}
+							DirectoryBlock* dblock2 = malloc(sizeof(DirectoryBlock));
+							int next_db2 = fdb->header->next_block;
+							while(next_db2 != -1){
+								DiskDriver_readBlock(fs->disk, dblock2, next_db2);
+								for(j = 0; j < sizeof(dblock2->file_blocks); j++){
+									if(dir->dcb->file_blocks[j] > 0){
+										FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+										DiskDriver_readBlock(fs->disk, delete, fdb->file_blocks[j]);
+										SimpleFS_remove(fs, delete->fcb->name);
+										fdb->file_blocks[i] = 0;
+									}
+								}
+							}
+						}
+						else{
+							int rimasti2;
+							for(j = 0, rimasti2 = fdb->num_entries; j < sizeof(dblock2->file_blocks); j++){
+								//se l'elemento contiene un blocco figlio
+								if(fdb->file_blocks[j] > 0 && rimasti2){
+									rimasti2--;
+									FirstFileBlock* delete = malloc(sizeof(FirstFileBlock));
+									DiskDriver_readBlock(fs->disk, delete, fdb->file_blocks[j]);
+									SimpleFS_remove(fs, delete->fcb->name);
+									fdb->file_blocks[i] = 0;
+								}
+							}
+							DiskDriver_freeBlock(fs->disk, fdb->fcb->block_in_disk);
+							return 0;
+						}
+					}
+					dir->dcb->file_blocks[i] = 0;
+				}
+			}
+		}
+	}
+	return -1;
+}
