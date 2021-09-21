@@ -432,7 +432,7 @@ int SimpleFS_read(FileHandle* f, void* data, int size){
 		//da leggere è minore della stringa da returnare
 		while(strlen(data) < size && next_block != -1){
 			DiskDriver_readBlock(f->sfs->disk, file, next_block);
-			sprintf(data, "%s%s", data, file->data);
+			sprintf(data, "%s%s", (char*) data, file->data);
 			next_block = file->header.next_block;
 		}
 	}
