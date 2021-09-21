@@ -32,7 +32,7 @@ int BitMap_get(BitMap* bmap, int start, int status){
 	
 	for(i=start; i<=bmap->num_bits; i++){
 		BitMapEntryKey chiave = BitMap_blockToIndex(i);
-		res = (bmap->entries[chiave.entry_num] &(1<<(7-chiave.bit_num));
+		res = (bmap->entries[chiave.entry_num] &(1<<(7-chiave.bit_num)));
 		
 		if(status==1){
 			if(res>0) return i;
