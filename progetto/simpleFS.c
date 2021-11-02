@@ -629,7 +629,7 @@ int SimpleFS_mkDir(DirectoryHandle* d, char* dirname){
 int SimpleFS_remove(SimpleFS* fs, char* filename){
 	if(fs == NULL || filename == NULL) return -1;
 	DirectoryHandle* dir = malloc(sizeof(DirectoryHandle));
-	dir->sfs = fs;
+	dir = SimpleFS_init(fs, fs->disk);
 	int block, nblock, i,j;
 	//se la cartella ha un blocco successivo
 	if(dir->dcb->header.next_block != -1){

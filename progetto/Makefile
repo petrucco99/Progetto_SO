@@ -4,7 +4,7 @@ CC=gcc
 AR=ar
 
 
-BINS= simplefs_test
+BINS= simpleFS_test
 
 OBJS = #add here your object files
 

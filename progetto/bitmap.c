@@ -20,7 +20,9 @@ BitMapEntryKey BitMap_blockToIndex(int num){
 /*Convertiamo l'indice dell'entry e il suo spiazzamento in un
  * intero che rappresenta la sua posizione in memoria*/
 int BitMap_indexToBlock(int entry, uint8_t bit_num){
-	return (entry*8)+bit_num;
+	int res = (entry*8)+bit_num;
+	//fflush(stdout);
+	return res;
 }
 
 /* inizio a cercare da start nella bitmap "bmap" fino a trovare
@@ -28,7 +30,7 @@ int BitMap_indexToBlock(int entry, uint8_t bit_num){
 int BitMap_get(BitMap* bmap, int start, int status){
 	if(start>bmap->num_bits) return -1;
 	
-	int p, i, res;
+	int i, res;
 	
 	for(i=start; i<=bmap->num_bits; i++){
 		BitMapEntryKey chiave = BitMap_blockToIndex(i);

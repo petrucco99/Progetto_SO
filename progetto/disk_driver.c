@@ -15,41 +15,76 @@
  * calcolando la dimensione della bitmap per il file appena creato.
  * Compila un Disk header e riempie la Bitmap con 0*/
 void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
+	//printf("diskinit\n");
+	//fflush(stdout);
 	int bmap_entry = num_blocks;
 	int f;
 	if(!access(filename, F_OK)){
+		//printf("diskinit1\n");
+		//fflush(stdout);
 		f = open(filename, O_RDWR, 0666);
 		if(!f){
 			printf("Errore nell'apertura del file.\n");
 			return;
 		}
 		int mem = posix_fallocate(f, 0, sizeof(DiskHeader) + bmap_entry + num_blocks * BLOCK_SIZE);
+		//printf("diskinit mem\n");
+		//fflush(stdout);
 		disk->fd = f;
-		disk->header = (DiskHeader*) mmap(0,sizeof(DiskHeader) + bmap_entry + (num_blocks * BLOCK_SIZE), PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);		
+		disk->header = (DiskHeader*) mmap(0,sizeof(DiskHeader) + bmap_entry + (num_blocks * BLOCK_SIZE), PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);	
+		//printf("diskinit header\n");
+		//fflush(stdout);	
 	}
 	else{
+		//printf("diskinit2\n");
+		//fflush(stdout);
 		f = open(filename, O_CREAT | O_RDWR, 0666);
+		//printf("diskinit file\n");
+		//fflush(stdout);
 		if(!f){
 			printf("Errore nell'apertura del file.\n");
 			return;
 		}
 		disk->fd = f;
 		int mem = posix_fallocate(f, 0, sizeof(DiskHeader) + bmap_entry + num_blocks * BLOCK_SIZE);
+		//printf("diskinit mem\n");
+		//fflush(stdout);
 		
 		//creiamo l'header disk
-		
-		disk->header = (DiskHeader*) mmap(0,sizeof(DiskHeader) + bmap_entry + (num_blocks * BLOCK_SIZE), PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);
+		disk->header = 0;
+		disk->header  =malloc(sizeof(DiskHeader)+bmap_entry+(num_blocks * BLOCK_SIZE));
+		memset(disk->header, 0, sizeof(DiskHeader)+bmap_entry+(num_blocks * BLOCK_SIZE));
+		//disk->header = (DiskHeader*) mmap(0,sizeof(DiskHeader) + bmap_entry + (num_blocks * BLOCK_SIZE), PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);
+		//printf("header = %d", disk->header);
+		//printf("diskinit headder 1\n");
+		//fflush(stdout);
 		disk->header->num_blocks = num_blocks;
+		//printf("diskinit headder 2\n");
+		//fflush(stdout);
 		disk->header->bitmap_blocks = count_bloks(bmap_entry);
+		//printf("diskinit headder 3\n");
+		//fflush(stdout);
 		disk->header->bitmap_entries = bmap_entry;
+		//printf("diskinit headder 4\n");
+		//fflush(stdout);
 		disk->header->free_blocks = num_blocks;
+		//printf("diskinit headder 5\n");
+		//fflush(stdout);
 	}
 	
+	//printf("diskinit\n");
+	//fflush(stdout);
 	lseek(f, 0, SEEK_SET);
+	//printf("diskinit\n");
+	//fflush(stdout);
 	//memorizzo nella bitmap il * alla mmap saltando il spazio lascaito per il DiskHeader
 	disk->bitmap_data = (char*) disk->header + sizeof(DiskHeader);
+	//printf("diskinit\n");
+	//fflush(stdout);
 	//lascio nel driver un dato che porta al primo blocco libero
 	disk->header->first_free_block = DiskDriver_getFreeBlock(disk, 0);
+	//printf("diskinit\n");
+	//fflush(stdout);
 	return;
 }
 
