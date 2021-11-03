@@ -212,12 +212,12 @@ int main(int agc, char** argv) {
 			printf("\n    Errore nell'apertura del file\n");
 			return;
 		}
-
+ 
 	 	// Test SimpleFS_write
 		printf("\n\n+++ Test SimpleFS_write()");
-		FILE * file_test = fopen("divina_commedia.txt", "r");
+		FILE * file_test = fopen("prova.txt", "r");
 		struct stat fileStat;
-		stat("divina_commedia.txt", &fileStat);
+		stat("prova.txt", &fileStat);
 		char stringa[fileStat.st_size];
 		if(test_file) {
 			fread(stringa, sizeof(char), fileStat.st_size, file_test);
@@ -233,7 +233,7 @@ int main(int agc, char** argv) {
 			printf("\n    Errore nella scrittura del file\n");
 		}
 		printf("\n    BitMap => ");
-		stampa(disk.bitmap_data);
+		stampa(disk.bitmap_data);  
 
 		// Test SimpleFS_write() con pos != 0
 		printf("\n\n+++ Test SimpleFS_write()");
@@ -273,7 +273,7 @@ int main(int agc, char** argv) {
 			printf("\n    Errore nello spostamento del cursore\n");
 			return;
 		}
-
+  
 		// Test SimpleFS_close
 		printf("\n\n+++ Test SimpleFS_close()");
 		ret = SimpleFS_close(file_handle);
@@ -285,7 +285,7 @@ int main(int agc, char** argv) {
 			return;
 		}
 		
-		SimpleFS_changeDir(directory_handle, "pluto");
+		SimpleFS_changeDir(directory_handle, "pluto"); 
 		for(i=0; i<500; i++) {
 			char nomello[255];
 			sprintf(nomello, "%s%d%s", "pluto_", i, ".txt");
@@ -293,13 +293,17 @@ int main(int agc, char** argv) {
 		}
 		printf("\n\n    Ho aggiunto %d files in \"pluto\"", directory_handle->dcb->num_entries);
 		SimpleFS_changeDir(directory_handle, "..");
-		printf("\n    BitMap => ");
-		stampa(disk.bitmap_data);
-
-		// Test SimpleFS_remove
+		printf("\n    BitMap => "); 
+		stampa(disk.bitmap_data); 
+   
+		// Test SimpleFS_remove 
 		printf("\n\n+++ Test SimpleFS_remove() [cartella]");
-		strcpy(nome_file, "pluto");
-		ret = SimpleFS_remove(directory_handle, nome_file);
+		strcpy(nome_file, "pluto"); 
+		//printf("\n\n\nINIZIO");
+		//fflush(stdout);
+		ret = SimpleFS_remove(&fs, nome_file);
+		//printf("\n\n\nFINE"); 
+		//fflush(stdout); 
 		printf("\n    SimpleFS_remove(file_handle, \"%s\") => %d", nome_file, ret);
 		if(ret >= 0) {
 			printf("\n    Cancellazione del file avvenuta correttamente");
