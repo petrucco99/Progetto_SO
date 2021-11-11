@@ -52,7 +52,7 @@ void DiskDriver_init(DiskDriver* disk, const char* filename, int num_blocks){
 		
 		//creiamo l'header disk
 		disk->header = 0;
-		disk->header  =malloc(sizeof(DiskHeader)+bmap_entry+(num_blocks * BLOCK_SIZE));
+		disk->header  = malloc(sizeof(DiskHeader)+bmap_entry+(num_blocks * BLOCK_SIZE));
 		memset(disk->header, 0, sizeof(DiskHeader)+bmap_entry+(num_blocks * BLOCK_SIZE));
 		//disk->header = (DiskHeader*) mmap(0,sizeof(DiskHeader) + bmap_entry + (num_blocks * BLOCK_SIZE), PROT_READ | PROT_WRITE, MAP_SHARED, f, 0);
 		//printf("header = %d", disk->header);
@@ -116,7 +116,7 @@ int DiskDriver_writeBlock(DiskDriver* disk, void* src, int block_num){
 	
 	memcpy(disk->bitmap_data + disk->header->bitmap_entries + (block_num * BLOCK_SIZE), src, BLOCK_SIZE);
 	
-	//controllo che si sia memorizzato su disco
+	//controllo che si sia memorizzato su disco 
 	if(DiskDriver_flush(disk) == -1) return -1;
 	disk->header->first_free_block = DiskDriver_getFreeBlock(disk, 0);
 	return 0;

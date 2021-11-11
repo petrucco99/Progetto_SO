@@ -882,6 +882,6 @@ int SimpleFS_remove_aux(DirectoryHandle* d, char* filename){
 			}
 		}
 	}
-	return 0;
+	return -1;
 	
 }
